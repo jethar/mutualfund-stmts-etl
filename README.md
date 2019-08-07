@@ -1,4 +1,4 @@
-# Fin Indian Statments
+# ETL for Mutual Fund Statements
 
 This project is for handling and interpreting the mutual fund statments in Indian context to provide useful insights. the user provides pdf statments for CAS (Consolidated Account Statements) and gain statements from fund management services such as CAMS and Karvy.
 

@@ -1,0 +1,16 @@
+language: python
+python:
+  - "3.7"
+matrix:
+  allow_failures:
+    - python: "pypy"
+# command to install dependencies
+install:
+  - pip install -r requirements.txt
+  - pip install -r requirements-dev.txt
+  - pip install coveralls
+# command to run tests
+script: py.test finindia_stmts/test -v --cov finindia_stmts --cov-report html
+
+after_success:
+  coveralls

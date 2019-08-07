@@ -1,0 +1,23 @@
+*.py[co]
+*~
+.DS_Store
+.vscode/
+_cache/
+.cache/
+.coverage
+/cover/
+/htmlcov/
+/build/
+/dist/
+*.egg-info
+tags
+tmp
+output*
+input
+
+# virtualenv folders
+venv2
+venv3
+.python-version
+.ipynb_checkpoints
+

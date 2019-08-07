@@ -54,13 +54,17 @@ Go into the `finindia_stmts` folder, containing the `finindia_stmts.py` file.
 
 1. Create two folders - `input` and `output` in the working directory. 
 2. Put the pdf files in the `input` folder.
-3. Make the changes in `finindia_stmts.main()` function to the `processing_queue` list to include the files in the tuple, which contains following values for each file -
-  a. filename
-  b. Whether the given pdf is - `CAS` or `GAIN`
-  c. password
-  d. in case of pt.b being GAIN, whether it is from CAMS or KARVY operated funds.
+3. Make a copy of the file - **input/job-desc-sample.csv**, and make changes in it appropriately.
+    1. filename
+    2. Whether the given pdf is - `CAS` or `GAIN`
+    3. password
+    4. in case of pt.b being GAIN, whether it is from CAMS or KARVY operated funds.
 4. Run the command -
-   `python finindia_stmts.py`
+    ```
+    extract.py -c input/job-description.csv
+      # or
+    python extract.py -c input/job-desc.csv
+    ```
 
 
 The `output` folder will contain the generated CSV files for each input pdf. Also following reconciliation CSVs will be generated:

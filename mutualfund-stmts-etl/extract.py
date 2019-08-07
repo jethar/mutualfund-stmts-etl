@@ -2,11 +2,14 @@
 # coding: utf-8
 
 import os
+from argparse import ArgumentParser
+# import sys, getopt
 import csv
 import re
 import tabula
 import logging
 import datetime
+import csv
 
 from collections import namedtuple
 # from data_types import Transaction, TransactionId
@@ -476,6 +479,36 @@ if __name__ == "__main__":
     cas_dict = None
     gains_dict = {}
 
+    # logging.debug("Number of arguments: %d argumnets" % (len(sys.argv)))
+    # logging.debug("Argument List: %s" % (str(sys.argv))
+
+    # try:
+    #     opts, args = getopt.getopt(sys.argv[1:], "hc:",["config="])
+    # except getopt.GetoptError:
+    #     print('./extract.py -c <configfile>')
+    #     sys.exit(2)
+    
+    # for opt, arg in opts:
+    #     if opt == '-h':
+    #        print('./extract.py -c <configfile>')
+    #        sys.exit()
+    #     elif opt in ("-c", "--config"):
+    #         job_file_path = arg
+
+    # job_file_path = sys.argv[1] if len(sys.argv) > 1 else 'input/job-desc.csv'
+
+    parser = ArgumentParser()
+    parser.add_argument("-c", "--config", dest="job_file_path", default="input/job-desc.csv",
+                        help="read pdf files info from csv file", metavar="CONFIG_FILE")
+
+    args = parser.parse_args()                    
+
+    with open(args.job_file_path,'rt') as csv_file:
+        reader = csv.reader(csv_file)
+        next(reader, None)  # skip the headers
+        for row in reader:   
+            processing_queue.append(tuple(None if v.strip() == "" else v.strip() for v in row)) 
+
     for filename, stmt_type, password, stmt_src in processing_queue:
 
         stmt_type = stmt_type.upper()
@@ -488,6 +521,8 @@ if __name__ == "__main__":
         summary_file_path = "output/reconciliation_summary.csv"
         detailed_summ_file_path = "output/reconciliation_detailed.csv"
 
+        columns = []
+        
         if stmt_type == 'CAS':
             columns = CAMS_CAS_COLUMNS
         elif stmt_type == 'GAIN':

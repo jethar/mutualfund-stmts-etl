@@ -50,7 +50,7 @@ to use the option `--user` to `pip install`, if you need can.
 
 ## Usage
 
-Go into the `finindia_stmts` folder, containing the `finindia_stmts.py` file.
+Go into the `mutualfund-stmts-etl` folder, containing the `extract.py` file.
 
 1. Create two folders - `input` and `output` in the working directory. 
 2. Put the pdf files in the `input` folder.
@@ -90,11 +90,11 @@ recommended versions of its dependencies, see them in the file
 bugtracker, please fill the issue template with *as much information as
 possible*.
 
-[issue]: https://github.com/finindia_stmts/finindia_stmts/issues
+[issue]: https://github.com/mutualfund-stmts-etl/mutualfund-stmts-etl/issues
 
 # Filing an issue/Reporting a bug
 
-When reporting bugs against `finindia_stmts`, please don't forget to include
+When reporting bugs against `mutualfund-stmts-etl`, please don't forget to include
 enough information so that you can help us help you:
 
 * Is the problem happening with the latest version of the script?
@@ -113,4 +113,4 @@ enough information so that you can help us help you:
 
 Please, post bugs and issues on [github][1]. 
 
-[1]: https://github.com/finindia_stmts/finindia_stmts/issues
+[1]: https://github.com/mutualfund-stmts-etl/mutualfund-stmts-etl/issues

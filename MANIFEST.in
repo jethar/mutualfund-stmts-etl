@@ -12,5 +12,5 @@ exclude .travis.yml
 exclude CHANGELOG.md
 exclude README.md
 
-prune finindia_stmts/test/
+prune mutualfund-stmts-etl/test/
 prune .github/

@@ -33,6 +33,7 @@ TXN_LIST_HEADERS = ["scheme_code", "scheme_name", "folio", "owner", "scheme_norm
 
 def pdf_to_text(pdf_path, outfile, columns, output_format='tsv', password = None):
     
+    logging.debug("Extracting text from pdf - {}".format(pdf_path))
     options_dict = {}
     if password is not None:
         options_dict["password"] = password
@@ -76,6 +77,8 @@ class TxnDict:
     def __init__(self, txn_list = [], scope = "all"):
         self.txn_dict = {}
 
+        
+
         for txn in txn_list:
             logging.debug(txn)
             if scope != "all" and scope != txn[6].lower():
@@ -104,7 +107,7 @@ class TxnDict:
     def str_values(self, only_non_zero_values = False):
         lst = []
         for key, units in self.txn_dict.items():
-            if only_non_zero_values and units == 0:
+            if only_non_zero_values and abs(units) <= 0.001:
                 continue
 
             lst.append("%s, %s\n" % ( re.sub(r'[()\']+', '', str(key)), units))
@@ -132,6 +135,9 @@ class TxnDict:
     def __or__(self, other): 
         return self.__add__(other, "or")
 
+    def __ror__(self, other):
+        return self.__radd__(other, "or")
+
     def __add__(self, other, operator=None):
         new_dict = self.txn_dict.copy()
         for key, units in other.txn_dict.items():
@@ -142,7 +148,8 @@ class TxnDict:
             else:
                 norm_key = self.get_tuple_with_norm_value(key)
                 if norm_key in new_dict:
-                    new_dict[norm_key] += units
+                    if operator is None:
+                        new_dict[norm_key] += units
                 else:
                     new_dict[key] = units     
         
@@ -150,17 +157,38 @@ class TxnDict:
         c.txn_dict = new_dict
         return c 
 
-    def __radd__(self, other):
-        raise Exception("Called radd on <class TxnDict>. Implement that!! \n Other object type: {}".format(type(other)))
+    def __radd__(self, other, operator=None):
+        # raise Exception("Called radd on <class TxnDict>. Implement that!! \n Other object type: {}".format(type(other)))
+
+        new_dict = other.txn_dict.copy() if other is not None else {}
+        for key, units in self.txn_dict.items():
+            if key in new_dict:
+                if operator is None:
+                    logging.debug("Inside operator None check")
+                    new_dict[key] += units
+            else:
+                norm_key = self.get_tuple_with_norm_value(key)
+                if norm_key in new_dict:
+                    if operator is None:
+                        new_dict[norm_key] += units
+                else:
+                    new_dict[key] = units     
+        
+        c = TxnDict()
+        c.txn_dict = new_dict
+        return c 
 
     def __sub__(self, other):
+        logging.debug("Inside TxnDict.__sub__")
         new_dict = self.txn_dict.copy()
         for key, units in other.txn_dict.items():
+            logging.debug("Looking for - {}".format(key))
             if key in new_dict:
-                # logging.debug("Original Units: {}".format(new_dict[key]))
+                logging.debug("Original Units: {}".format(new_dict[key]))
                 new_dict[key] -= units
-                # logging.debug("Updated Units: {}".format(new_dict[key]))
+                logging.debug("Updated Units: {}".format(new_dict[key]))
             else:
+                logging.debug("Key did not match - {}".format(key))
                 norm_key = self.get_tuple_with_norm_value(key)
                 if norm_key in new_dict:
                     new_dict[norm_key] -= units
@@ -478,25 +506,25 @@ class CsvGainStatement:
         #     indexed_cost", "stcg", "ltcg_idx", "ltcg_wo_idx", "units_grandf", "nav_grandf", "value_grandf"]   
         
         #    0	 Symbol
-        #    1	 Entry Trade Date
-        #    2	 Buy Average
-        #    3	 Qty
-        #    4	 Buy Value
-        #    5	 Exit Trade Date
-        #    6	 Sell Average
-        #    7	 Sell Value
-        #    8	 Profit
-        #    9	 Period Of Holdings
-        #   10	FMV
-        #   11	Grandfathered Long Term Profit
-        #   12	Taxable Profit
-        #   13	Turnover     
+        #    1   Folio
+        #    2	 Entry Trade Date
+        #    3	 Buy Average
+        #    4	 Qty
+        #    5	 Buy Value
+        #    6	 Exit Trade Date
+        #    7	 Sell Average
+        #    8	 Sell Value
+        #    9	 Profit
+        #   10	 Period Of Holdings
+        #   11	FMV
+        #   12	Grandfathered Long Term Profit
+        #   13	Taxable Profit     
                
         scheme_name = row[0]
         scheme_norm = normalize_scheme_name(scheme_name)
         
-        sell_txn = [None, scheme_name, None, None, scheme_norm, convert_date(row[5]), "Sell", row[7], row[3], row[6]]
-        buy_txn  = [None, scheme_name, None, None, scheme_norm, convert_date(row[1]), "Buy", row[4], row[3], row[2]]
+        sell_txn = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[6]), "Sell", row[8], row[4], row[7]]
+        buy_txn  = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[2]), "Buy", row[5], row[4], row[3]]
         
         return buy_txn, sell_txn
 
@@ -518,6 +546,10 @@ class CsvGainStatement:
 
         return gain_txn_list
 
+def write_summary(summary_file_path, txn_dict, only_non_zero_values = False):
+    with open(summary_file_path, 'w+') as outfile: 
+        for i in txn_dict.str_values(only_non_zero_values):
+            outfile.write(i)
 
 
 if __name__ == "__main__":
@@ -568,6 +600,9 @@ if __name__ == "__main__":
         next(reader, None)  # skip the headers
         for row in reader:   
             processing_queue.append(tuple(None if v.strip() == "" else v.strip() for v in row)) 
+    
+    gain_dict = None
+    csv_gain_dict = None
 
     for filename, stmt_type, password, stmt_src in processing_queue:
 
@@ -579,6 +614,7 @@ if __name__ == "__main__":
         output_path = "output/{}".format(os.path.splitext(filename)[0])
         outfile = "{}-{}.{}".format(output_path, stmt_type, output_format)
         summary_file_path = "output/reconciliation_summary.csv"
+        summary_file_excl_csv_path = "output/reconciliation_summary_excl_csv_gains.csv"
         detailed_summ_file_path = "output/reconciliation_detailed.csv"
 
         columns = []
@@ -612,45 +648,49 @@ if __name__ == "__main__":
                 txn_list = CsvGainStatement().process_stmt(input_path)   
             
             logging.debug("creating TxnDict for : {}".format(filename))
-            gains_dict[filename] = TxnDict(txn_list, "sell")
+            txn_dict = TxnDict(txn_list, "sell")
             headers = TXN_LIST_HEADERS
             outcsvfile = "{}-gains.{}".format(output_path, "csv")
 
-        
+            if stmt_src == 'CSV':
+                csv_gain_dict = csv_gain_dict | txn_dict
+            else:
+                gain_dict = gain_dict | txn_dict
+                # if gain_dict is None:
+                #     gain_dict = TxnDict.copy(txn_dict)
+                # else:
+                #     gain_dict = gain_dict | txn_dict
+
         txn_list.insert(0, headers)
         write_txns_to_csv(outcsvfile, txn_list)
 
     logging.debug("cas_dict \n ======>\n{}".format(cas_dict.__repr__()))
 
-    # cas_dict_copy = TxnDict.copy(cas_dict)
-    gain_dict_cumm = None
+    # recon_dict = TxnDict.copy(cas_dict)
+    # gain_dict_cumm = None
     # logging.debug("cas_dict_copy: {}".format(cas_dict_copy))
 
     
-    for filename, txn_dict in gains_dict.items():
-        # logging.debug("\n\n GainDict BEFORE -\n{}".format(gain_dict_cumm))
-        if gain_dict_cumm is None:
-            gain_dict_cumm = TxnDict.copy(txn_dict)
-        else:
-            gain_dict_cumm = gain_dict_cumm | txn_dict 
+    # for filename, txn_dict in gains_dict.items():
+    #     # logging.debug("\n\n GainDict BEFORE -\n{}".format(gain_dict_cumm))
+    #     if gain_dict_cumm is None:
+    #         gain_dict_cumm = TxnDict.copy(txn_dict)
+    #     else:
+    #         gain_dict_cumm = gain_dict_cumm | txn_dict 
             
-        logging.debug("\n\n GainDict AFTER -\n{}".format(gain_dict_cumm))    
+        # logging.debug("\n\n GainDict AFTER -\n{}".format(gain_dict_cumm))    
         # logging.debug("gain_dict \n ======> filename: {} \n {}".format(filename, txn_dict.__repr__())) 
         # logging.debug("cas_dict : {}".format(cas_dict_copy)) 
         # logging.debug("txn_dict : {}".format(txn_dict))
     
+    logging.debug("\n\n GainDict AFTER -\n{}".format(gain_dict)) 
     logging.debug("\n\n CASDict -\n{}".format(cas_dict)) 
-    recon_dict = cas_dict - txn_dict              
-    
+    recon_dict = cas_dict - gain_dict              
+    write_summary(summary_file_excl_csv_path, recon_dict, only_non_zero_values = True)
 
-    logging.debug("cas_dict \n ======>\n{}".format(recon_dict))
+    recon_dict = recon_dict - csv_gain_dict
+    write_summary(summary_file_path, recon_dict, only_non_zero_values = True)
+    write_summary(detailed_summ_file_path, recon_dict)
 
-    with open(summary_file_path, 'w+') as outfile: 
-        for i in recon_dict.str_values(only_non_zero_values = True):
-            outfile.write(i)
-        # outfile.writelines(cas_dict_copy.non_zero_values())
-
-    with open(detailed_summ_file_path, 'w+') as outfile: 
-        for i in recon_dict.str_values():
-            outfile.write(i)
-
+    logging.debug("recon_dict \n ======>\n{}".format(recon_dict))
+ 

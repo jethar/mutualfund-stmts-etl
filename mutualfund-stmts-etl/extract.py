@@ -12,6 +12,7 @@ import datetime
 import csv
 
 from collections import namedtuple
+from collections import OrderedDict 
 # from data_types import Transaction, TransactionId
 
 # TODO stt to transaction tuple
@@ -127,12 +128,17 @@ class TxnDict:
         #         s += "\n" + str(key).strip("()") + ", " + str(units) 
         # return "<class {}> : count = {}".format(self.__class__.__name__ , len(self.txn_dict.keys()))
         return s
+    
+    def __or__(self, other): 
+        return self.__add__(other, "or")
 
-    def __add__(self, other):
+    def __add__(self, other, operator=None):
         new_dict = self.txn_dict.copy()
         for key, units in other.txn_dict.items():
             if key in new_dict:
-                new_dict[key] += units
+                if operator is None:
+                    logging.debug("Inside operator None check")
+                    new_dict[key] += units
             else:
                 norm_key = self.get_tuple_with_norm_value(key)
                 if norm_key in new_dict:
@@ -175,7 +181,7 @@ class TxnDict:
         raise Exception("Called rsub on <class TxnDict>. Implement that!! \n Other object type: {}".format(type(other)))
 
     def get_tuple_with_norm_value(self, tup):
-        new_folio = folio_norm_value(tup[0])
+        new_folio = folio_norm_value(tup[0]) if tup[0] is not None else None
         return (new_folio,) + tup[1:]
 
     @classmethod
@@ -217,6 +223,8 @@ def remove_last_item(lst, separator):
     return lst[0:last_index]
 
 def convert_date(date_str, in_format = "%d-%b-%Y", out_format = "%Y-%m-%d"):
+    if len(date_str) == 19 and "T" in date_str:
+        in_format = "%Y-%m-%dT%H:%M:%S"
     return datetime.datetime.strptime(date_str, in_format).strftime(out_format)    
 
 # ## Processing CAS
@@ -459,6 +467,57 @@ class KarvyGainStatement:
 
         return gain_txn_list            
 
+class CsvGainStatement:
+
+    def csv_row_to_txn_list(self, row):
+
+        # Input :
+        #   Symbol, Entry Trade Date, Buy Average, Qty, Buy Value, Exit Trade Date, Sell Average, Sell Value, Profit
+        # Output
+        #   ["scheme_code", "scheme_name", "folio", "owner", "scheme_norm", "date", "txn_type", "price", "units", "nav", 
+        #     indexed_cost", "stcg", "ltcg_idx", "ltcg_wo_idx", "units_grandf", "nav_grandf", "value_grandf"]   
+        
+        #    0	 Symbol
+        #    1	 Entry Trade Date
+        #    2	 Buy Average
+        #    3	 Qty
+        #    4	 Buy Value
+        #    5	 Exit Trade Date
+        #    6	 Sell Average
+        #    7	 Sell Value
+        #    8	 Profit
+        #    9	 Period Of Holdings
+        #   10	FMV
+        #   11	Grandfathered Long Term Profit
+        #   12	Taxable Profit
+        #   13	Turnover     
+               
+        scheme_name = row[0]
+        scheme_norm = normalize_scheme_name(scheme_name)
+        
+        sell_txn = [None, scheme_name, None, None, scheme_norm, convert_date(row[5]), "Sell", row[7], row[3], row[6]]
+        buy_txn  = [None, scheme_name, None, None, scheme_norm, convert_date(row[1]), "Buy", row[4], row[3], row[2]]
+        
+        return buy_txn, sell_txn
+
+    def process_stmt(self, csv_path):
+
+        gain_txn_list = []
+
+        with open(csv_path) as csv_file:
+            csv_reader = csv.reader(csv_file, delimiter=',')
+            line_count = 0
+            for row in csv_reader:
+                if line_count == 0:
+                    logging.debug(f'Column names are {", ".join(row)}')
+                    line_count += 1
+                else:
+                    buy_txn, sell_txn = self.csv_row_to_txn_list(row)
+                    gain_txn_list.append(buy_txn)
+                    gain_txn_list.append(sell_txn)
+
+        return gain_txn_list
+
 
 
 if __name__ == "__main__":
@@ -467,7 +526,8 @@ if __name__ == "__main__":
     owner = None
     output_format = 'tsv'
 
-    # TODO: Read from CSV
+    # TODO: Handling CSV input in any order in job-description csv file.
+    #   At the moment it has to be the last one in csv.
 
     # tuple(filename, stmt_type, password, stmt_src) 
     # where :
@@ -477,7 +537,7 @@ if __name__ == "__main__":
     processing_queue = []
 
     cas_dict = None
-    gains_dict = {}
+    gains_dict = OrderedDict() 
 
     # logging.debug("Number of arguments: %d argumnets" % (len(sys.argv)))
     # logging.debug("Argument List: %s" % (str(sys.argv))
@@ -515,7 +575,7 @@ if __name__ == "__main__":
         if stmt_src is not None:
             stmt_src = stmt_src.upper()
 
-        pdf_path = "input/{}".format(filename)
+        input_path = "input/{}".format(filename)
         output_path = "output/{}".format(os.path.splitext(filename)[0])
         outfile = "{}-{}.{}".format(output_path, stmt_type, output_format)
         summary_file_path = "output/reconciliation_summary.csv"
@@ -528,9 +588,9 @@ if __name__ == "__main__":
         elif stmt_type == 'GAIN':
             columns = CAMS_GAIN_COLUMNS if stmt_src == 'CAMS' else KARVY_GAIN_COLUMNS
 
-        pdf_to_text(pdf_path, outfile, columns, output_format, password)    
-
-        content = read_pdftext_file(outfile)
+        if stmt_src != "CSV":
+            pdf_to_text(input_path, outfile, columns, output_format, password) 
+            content = read_pdftext_file(outfile)
 
         txn_list = [] 
         headers = []
@@ -548,6 +608,8 @@ if __name__ == "__main__":
                 txn_list = CamsGainStatement().process_stmt(content)
             elif stmt_src == 'KARVY':
                 txn_list = KarvyGainStatement().process_stmt(content)
+            elif stmt_src == 'CSV':
+                txn_list = CsvGainStatement().process_stmt(input_path)   
             
             logging.debug("creating TxnDict for : {}".format(filename))
             gains_dict[filename] = TxnDict(txn_list, "sell")
@@ -560,25 +622,35 @@ if __name__ == "__main__":
 
     logging.debug("cas_dict \n ======>\n{}".format(cas_dict.__repr__()))
 
-    cas_dict_copy = TxnDict.copy(cas_dict)
+    # cas_dict_copy = TxnDict.copy(cas_dict)
+    gain_dict_cumm = None
     # logging.debug("cas_dict_copy: {}".format(cas_dict_copy))
 
     
     for filename, txn_dict in gains_dict.items():
+        # logging.debug("\n\n GainDict BEFORE -\n{}".format(gain_dict_cumm))
+        if gain_dict_cumm is None:
+            gain_dict_cumm = TxnDict.copy(txn_dict)
+        else:
+            gain_dict_cumm = gain_dict_cumm | txn_dict 
+            
+        logging.debug("\n\n GainDict AFTER -\n{}".format(gain_dict_cumm))    
         # logging.debug("gain_dict \n ======> filename: {} \n {}".format(filename, txn_dict.__repr__())) 
         # logging.debug("cas_dict : {}".format(cas_dict_copy)) 
         # logging.debug("txn_dict : {}".format(txn_dict))
-        cas_dict_copy = cas_dict_copy - txn_dict              
+    
+    logging.debug("\n\n CASDict -\n{}".format(cas_dict)) 
+    recon_dict = cas_dict - txn_dict              
     
 
-    logging.debug("cas_dict \n ======>\n{}".format(cas_dict_copy))
+    logging.debug("cas_dict \n ======>\n{}".format(recon_dict))
 
     with open(summary_file_path, 'w+') as outfile: 
-        for i in cas_dict_copy.str_values(only_non_zero_values = True):
+        for i in recon_dict.str_values(only_non_zero_values = True):
             outfile.write(i)
         # outfile.writelines(cas_dict_copy.non_zero_values())
 
     with open(detailed_summ_file_path, 'w+') as outfile: 
-        for i in cas_dict_copy.str_values():
+        for i in recon_dict.str_values():
             outfile.write(i)
 

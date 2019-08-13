@@ -65,7 +65,10 @@ Go into the `mutualfund-stmts-etl` folder, containing the `extract.py` file.
       # or
     python extract.py -c input/job-desc.csv
     ```
-
+5. To get help, type -
+    ```
+    python extract.py -h
+    ```
 
 The `output` folder will contain the generated CSV files for each input pdf. Also following reconciliation CSVs will be generated:
 * reconciliation_summary.csv - Containing final mismatch 

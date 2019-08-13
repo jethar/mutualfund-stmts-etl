@@ -53,7 +53,7 @@ to use the option `--user` to `pip install`, if you need can.
 Go into the `mutualfund-stmts-etl` folder, containing the `extract.py` file.
 
 1. Create two folders - `input` and `output` in the working directory. 
-2. Put the pdf files in the `input` folder.
+2. Put the pdf files in the `input` folder. You can also add a csv transactions file based on eth template - `input/gain-statement-sample.csv`
 3. Make a copy of the file - **input/job-desc-sample.csv**, and make changes in it appropriately.
     1. filename
     2. Whether the given pdf is - `CAS` or `GAIN`
@@ -71,8 +71,9 @@ Go into the `mutualfund-stmts-etl` folder, containing the `extract.py` file.
     ```
 
 The `output` folder will contain the generated CSV files for each input pdf. Also following reconciliation CSVs will be generated:
-* reconciliation_summary.csv - Containing final mismatch 
+* reconciliation_summary.csv - Containing transactions reconciliation between CAS and gain statements  
 * reconciliation_detailed.csv - includes even matched folios, to infer if there is anything amiss.
+* reconciliation_summary_excl_csv_gains.csv - Containing transactions reconciliation between CAS and gain pdf statements excluding csv gain statement. 
 
 ## TODOs
 

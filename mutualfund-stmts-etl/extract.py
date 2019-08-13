@@ -656,35 +656,15 @@ if __name__ == "__main__":
                 csv_gain_dict = csv_gain_dict | txn_dict
             else:
                 gain_dict = gain_dict | txn_dict
-                # if gain_dict is None:
-                #     gain_dict = TxnDict.copy(txn_dict)
-                # else:
-                #     gain_dict = gain_dict | txn_dict
 
         txn_list.insert(0, headers)
         write_txns_to_csv(outcsvfile, txn_list)
 
     logging.debug("cas_dict \n ======>\n{}".format(cas_dict.__repr__()))
 
-    # recon_dict = TxnDict.copy(cas_dict)
-    # gain_dict_cumm = None
-    # logging.debug("cas_dict_copy: {}".format(cas_dict_copy))
-
-    
-    # for filename, txn_dict in gains_dict.items():
-    #     # logging.debug("\n\n GainDict BEFORE -\n{}".format(gain_dict_cumm))
-    #     if gain_dict_cumm is None:
-    #         gain_dict_cumm = TxnDict.copy(txn_dict)
-    #     else:
-    #         gain_dict_cumm = gain_dict_cumm | txn_dict 
-            
-        # logging.debug("\n\n GainDict AFTER -\n{}".format(gain_dict_cumm))    
-        # logging.debug("gain_dict \n ======> filename: {} \n {}".format(filename, txn_dict.__repr__())) 
-        # logging.debug("cas_dict : {}".format(cas_dict_copy)) 
-        # logging.debug("txn_dict : {}".format(txn_dict))
-    
     logging.debug("\n\n GainDict AFTER -\n{}".format(gain_dict)) 
     logging.debug("\n\n CASDict -\n{}".format(cas_dict)) 
+
     recon_dict = cas_dict - gain_dict              
     write_summary(summary_file_excl_csv_path, recon_dict, only_non_zero_values = True)
 

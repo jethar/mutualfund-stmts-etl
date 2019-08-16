@@ -21,7 +21,7 @@ Scheme = namedtuple('Scheme', ['scheme_name', 'folio_no', 'owner'])
 
 TransactionId = namedtuple('TransactionId', ["folio", "owner", "scheme_norm", "date", "txn_type", "nav"])
 
-logging.basicConfig(level = logging.DEBUG)
+logging.basicConfig(level = logging.INFO)
 
 CAMS_GAIN_COLUMNS = [70, 110, 160, 215, 242, 273, 330, 370, 425, 475, 510, 547, 590, 635, 679, 720, 762, 815, 830, 870, 915]
 KARVY_GAIN_COLUMNS = [67, 106, 148, 185, 234, 273, 340, 394, 431, 469, 520, 582, 640, 696, 755, 800, 845, 890]
@@ -72,30 +72,43 @@ class TxnDict:
     'all' : all transactions
     'buy' : only buy transactions
     'sell': only sell transactions
-    """  
+    """
 
-    def __init__(self, txn_list = [], scope = "all"):
+    log = logging.getLogger("TxnDict")
+    log.setLevel(logging.INFO)
+
+    def __init__(self, txn_list = [], scope = "all", **kwargs):
         self.txn_dict = {}
 
-        
+        if kwargs.get("debug", False):
+            self.log.setLevel(logging.DEBUG)
+
 
         for txn in txn_list:
-            logging.debug(txn)
+            self.log.debug(txn)
             if scope != "all" and scope != txn[6].lower():
                 continue
 
             d = txn[2:7]
-            d.append('%.3f'%(get_float(txn[9])))    
+            if kwargs["ignore_folio"]:
+                d[0] = None
+
+            if kwargs["ignore_nav"]:
+                d.append(None)
+            else:
+                d.append('%.3f'%(get_float(txn[9])))
+
             key = tuple(d)
+            self.log.debug("TxnDict Key: {}".format(key))
             value = get_float(txn[8])
             if key in self.txn_dict:
                 self.txn_dict[key] += value
-                logging.debug("units_nav : {}".format(self.txn_dict[key]))
+                self.log.debug("units_nav : {}".format(self.txn_dict[key]))
             else:    
                 self.txn_dict[key] = value
 
-        # logging.debug("txn_dict created!!!")
-        # logging.debug( self.txn_dict)
+        # self.log.debug("txn_dict created!!!")
+        # self.log.debug( self.txn_dict)
             
     def __repr__(self):
         return self.txn_dict
@@ -143,7 +156,7 @@ class TxnDict:
         for key, units in other.txn_dict.items():
             if key in new_dict:
                 if operator is None:
-                    logging.debug("Inside operator None check")
+                    self.log.debug("Inside operator None check")
                     new_dict[key] += units
             else:
                 norm_key = self.get_tuple_with_norm_value(key)
@@ -164,7 +177,7 @@ class TxnDict:
         for key, units in self.txn_dict.items():
             if key in new_dict:
                 if operator is None:
-                    logging.debug("Inside operator None check")
+                    self.log.debug("Inside operator None check")
                     new_dict[key] += units
             else:
                 norm_key = self.get_tuple_with_norm_value(key)
@@ -179,16 +192,16 @@ class TxnDict:
         return c 
 
     def __sub__(self, other):
-        logging.debug("Inside TxnDict.__sub__")
+        self.log.debug("Inside TxnDict.__sub__")
         new_dict = self.txn_dict.copy()
         for key, units in other.txn_dict.items():
-            logging.debug("Looking for - {}".format(key))
+            # self.log.debug("Looking for - {}".format(key))
             if key in new_dict:
-                logging.debug("Original Units: {}".format(new_dict[key]))
+                # self.log.debug("Original Units: {}".format(new_dict[key]))
                 new_dict[key] -= units
-                logging.debug("Updated Units: {}".format(new_dict[key]))
+                # self.log.debug("Updated Units: {}".format(new_dict[key]))
             else:
-                logging.debug("Key did not match - {}".format(key))
+                self.log.debug("Key did not match - {}".format(key))
                 norm_key = self.get_tuple_with_norm_value(key)
                 if norm_key in new_dict:
                     new_dict[norm_key] -= units
@@ -215,10 +228,10 @@ class TxnDict:
     @classmethod
     def copy(cls, txn_dict):
         c = cls()
-        logging.debug("Creating TxnDict copy !!!! \n\n\n")
+        # log.debug("Creating TxnDict copy !!!! \n\n\n")
         
         c.txn_dict = txn_dict.txn_dict.copy()
-        logging.debug(c)
+        # log.debug(c)
         return c   
 
 def normalize_scheme_name(scheme_name):
@@ -226,7 +239,7 @@ def normalize_scheme_name(scheme_name):
     Convert scheme name into a normalized form removing spaces, 'minus' sign.
     Return value: normalized schem_name
     """
-    print("scheme_name ; {}".format(scheme_name))
+    logging.debug("scheme_name ; {}".format(scheme_name))
 
     name = scheme_name.lower()
     try:
@@ -281,7 +294,7 @@ class CasStatement:
         folio = cas_list[index].split("\t")
         folio_no = "".join(folio[0:2]).split(":")[1].strip()  
         
-        print("Folio: {}".format(folio_no))
+        logging.debug("Folio: {}".format(folio_no))
         
         return scheme_name, folio_no
 
@@ -293,17 +306,17 @@ class CasStatement:
 
         cas_list = content.split("\n")
         cas_list = [l.lstrip("\"\"\t") for l in cas_list]
-        print(cas_list)
+        logging.debug(cas_list)
 
         cas1 = [l.replace("\t","").replace(" ","") for l in cas_list]
-        print(cas1)
+        logging.debug(cas1)
 
         open_index = [i for i, e in enumerate(cas1) if "OpeningUnitBalance" in e]
         close_index = [i for i, e in enumerate(cas1) if "ClosingUnitBalance" in e]
         no_txn_index = [i for i, e in enumerate(cas1) if "Notransactions" in e]
-        print(open_index)
-        print(close_index)
-        print(no_txn_index)
+        logging.debug(open_index)
+        logging.debug(close_index)
+        logging.debug(no_txn_index)
 
         if len(open_index) != len(close_index):
             raise Exception('length of opening and closing of transaction blocks is not same: ({} != {})'.format(len(open_index), len(close_index)))
@@ -364,11 +377,11 @@ class CasStatement:
                 # print(trade)
                     
         #         print(cas_list[open+1:close])
-                print("\n\n")
+                # print("\n\n")
                 
 
-        print("Total purchases: {}".format(purchases))     
-        print("Total redemptions: {}".format(redemptions))
+        logging.info("Total purchases: {}".format(purchases))     
+        logging.info("Total redemptions: {}".format(redemptions))
 
         return cas_txns_list
 
@@ -401,7 +414,7 @@ class CamsGainStatement:
                 txn_closed = False
                 
             if txn[0] in ["Purchase", "Redemption", "FOLIO No.", "Total", "Switch In (Merger)"]  and txn[1] != "Redeemed":
-                print(txn)
+                logging.debug(txn)
                 if txn[0] == "FOLIO No." :
                     folio = item.replace("\t", "")
                     folio = folio[9:folio.index("NAME")]
@@ -419,7 +432,7 @@ class CamsGainStatement:
                 # TODO: add handling of gains part
                 if txn[0] in ["Purchase", "Redemption", "Switch In (Merger)"]  and txn[1] != "Redeemed":
                     a = cas_list[index].split("\t")
-                    print(a)
+                    logging.debug(a)
                     if a[0] == "Redemption":
                         gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1]), "Sell", a[3], a[2], a[4],None,None,None,None,None,None,None])
         #  Date Units Amount Price
@@ -455,7 +468,7 @@ class KarvyGainStatement:
             if item.startswith("Folio No"):
                 folio = item.replace("\t", "")
                 folio = folio[10:].strip()
-                print("folio: {}".format(folio))
+                logging.debug("folio: {}".format(folio))
                 continue
             
             txn = item.split("\t")
@@ -475,7 +488,7 @@ class KarvyGainStatement:
                 # txn_detail_list.append(t)
                 prev_action = txn[0]
                 
-                print(txn)
+                logging.debug(txn)
                                
                 # TODO: add handling of gains part
                 if txn[0] in ["Purchase", "Redemption", "Switch In (Merger)"]  and txn[1] != "Redeemed":
@@ -592,8 +605,17 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("-c", "--config", dest="job_file_path", default="input/job-desc.csv",
                         help="read pdf files info from csv file", metavar="CONFIG_FILE")
+    parser.add_argument('--ignore-folio', action='store_true', help="ignore folio while comparing transactions")
+    parser.add_argument('--ignore-nav', action='store_true', help="ignore nav while comparing transactions")
+    parser.add_argument('--debug', action='store_true', help="show verbose info")
 
-    args = parser.parse_args()                    
+    args = parser.parse_args()  
+
+    if args.debug:
+        logging.root.setLevel(logging.DEBUG)
+
+    logging.info("args : {}".format(args)) 
+    logging.debug("args.ignore_folio : {}".format(args.ignore_folio))
 
     with open(args.job_file_path,'rt') as csv_file:
         reader = csv.reader(csv_file)
@@ -634,7 +656,7 @@ if __name__ == "__main__":
         if stmt_type == 'CAS':
             txn_list = CasStatement().process_stmt(content)
             if cas_dict is None:
-                cas_dict = TxnDict(txn_list, "sell")
+                cas_dict = TxnDict(txn_list, "sell", ignore_folio = args.ignore_folio, ignore_nav = args.ignore_nav, debug = args.debug)
             else:
                 logging.error("more than one CAS is not accepted. Ignoring ...")
             headers = CAS_LIST_HEADERS
@@ -648,7 +670,7 @@ if __name__ == "__main__":
                 txn_list = CsvGainStatement().process_stmt(input_path)   
             
             logging.debug("creating TxnDict for : {}".format(filename))
-            txn_dict = TxnDict(txn_list, "sell")
+            txn_dict = TxnDict(txn_list, "sell", ignore_folio = args.ignore_folio, ignore_nav = args.ignore_nav, debug = args.debug)
             headers = TXN_LIST_HEADERS
             outcsvfile = "{}-gains.{}".format(output_path, "csv")
 
@@ -662,15 +684,15 @@ if __name__ == "__main__":
 
     logging.debug("cas_dict \n ======>\n{}".format(cas_dict.__repr__()))
 
-    logging.debug("\n\n GainDict AFTER -\n{}".format(gain_dict)) 
-    logging.debug("\n\n CASDict -\n{}".format(cas_dict)) 
+    logging.info("\n\n GainDict AFTER -\n{}".format(gain_dict)) 
+    logging.info("\n\n CASDict -\n{}".format(cas_dict)) 
 
     recon_dict = cas_dict - gain_dict              
     write_summary(summary_file_excl_csv_path, recon_dict, only_non_zero_values = True)
 
-    recon_dict = recon_dict - csv_gain_dict
+    recon_dict = cas_dict - (gain_dict | csv_gain_dict)
     write_summary(summary_file_path, recon_dict, only_non_zero_values = True)
     write_summary(detailed_summ_file_path, recon_dict)
 
-    logging.debug("recon_dict \n ======>\n{}".format(recon_dict))
+    logging.info("recon_dict \n ======>\n{}".format(recon_dict))
  

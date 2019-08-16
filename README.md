@@ -50,6 +50,21 @@ to use the option `--user` to `pip install`, if you need can.
 
 ## Usage
 
+> **tl;dr**
+> ```
+> usage: extract.py [-h] [-c CONFIG_FILE] [--ignore-folio] [--ignore-nav]
+>                   [--debug]
+> 
+> optional arguments:
+>   -h, --help            show this help message and exit
+>   -c CONFIG_FILE, --config CONFIG_FILE
+>                         read pdf files info from csv file
+>   --ignore-folio        ignore folio while comparing transactions
+>   --ignore-nav          ignore nav while comparing transactions
+>   --debug               show verbose info
+> ```
+
+
 Go into the `mutualfund-stmts-etl` folder, containing the `extract.py` file.
 
 1. Create two folders - `input` and `output` in the working directory. 

@@ -29,7 +29,7 @@ KARVY_GAIN_COLUMNS = [67, 106, 148, 185, 234, 273, 340, 394, 431, 469, 520, 582,
 CAMS_CAS_COLUMNS = [26, 70, 310, 375, 435, 495, 570]
 
 CAS_LIST_HEADERS = ["scheme_code", "scheme_name", "folio", "owner", "scheme_norm", "date", "txn_type", "price", "units", "nav"]
-TXN_LIST_HEADERS = ["scheme_code", "scheme_name", "folio", "owner", "scheme_norm", "date", "txn_type", "price", "units", "nav", "indexed_cost", "stcg", "ltcg_idx", "ltcg_wo_idx", "units_grandf", "nav_grandf", "value_grandf"]
+TXN_LIST_HEADERS = ["scheme_code", "scheme_name", "folio", "owner", "scheme_norm", "date", "txn_type", "price", "units", "nav", "indexed_cost", "stcg", "ltcg_idx", "ltcg_wo_idx", "units_grandf", "nav_grandf", "value_grandf", "buy_value", "age_in_days"]
 
 def pdf_to_text(pdf_path, outfile, columns, output_format='tsv', password = None):
     
@@ -48,11 +48,17 @@ def read_pdftext_file(outfile):
     return content    
 
 
-def write_txns_to_csv(outcsvfile, txns_list):
+def write_txns_to_csv(outcsvfile, txns_list, mode = 'w', txn_filter = None):
 
-    with open(outcsvfile, 'w') as csvFile:
+    txns = []
+    if txn_filter:
+        txns = [txn for txn in txns_list if txn[6] in txn_filter]
+    else:
+        txns = txns_list
+    
+    with open(outcsvfile, mode) as csvFile:
         writer = csv.writer(csvFile)
-        writer.writerows(txns_list)
+        writer.writerows(txns)
 
     csvFile.close()
 
@@ -61,6 +67,9 @@ def folio_norm_value(folio):
 
 def get_float(num_str):
     return float(num_str.replace(",", ""))
+
+def price(units, nav):
+    return '%.3f'%(get_float(units) * get_float(nav))    
 
 class TxnDict:
     """
@@ -280,7 +289,13 @@ def convert_date(date_str, in_format = "%d-%b-%Y", out_format = "%Y-%m-%d"):
         in_format = "%Y-%m-%dT%H:%M:%S"
     return datetime.datetime.strptime(date_str, in_format).strftime(out_format)    
 
-# ## Processing CAS
+def age_in_days(buy_date, sell_date, in_format = "%d-%b-%Y"):
+    """
+    returns age of asset in days
+    """
+    logging.debug("{} - {}".format(sell_date, in_format))
+    delta = datetime.datetime.strptime(sell_date, in_format) - datetime.datetime.strptime(buy_date, in_format)
+    return delta.days
 
 class CasStatement:
 
@@ -410,6 +425,7 @@ class CamsGainStatement:
         txn_closed = True
         folio = ""
         scheme_name = None
+        nav_price = None
         gain_txn_list = []
 
         for index, item in enumerate(cas1):
@@ -446,13 +462,14 @@ class CamsGainStatement:
                     a = cas_list[index].split("\t")
                     logging.debug(a)
                     if a[0] == "Redemption":
-                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1]), "Sell", a[3], a[2], a[4],None,None,None,None,None,None,None])
+                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1]), "Sell", a[3], a[2], a[4],None,None,None,None,None,None,None, None])
+                        nav_price = a[4]
         #  Date Units Amount Price
         # namedtuple('Transaction', ['date', 'txn_type', 'price', 'units', 'nav']) 
                                 
                     if a[6] in ["Purchase", "Switch In (Merger)"]:
                         txn_type = "Buy" if a[6] == "Purchase" else "Switch In"
-                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[7]), txn_type, None, a[8], a[10], a[11], a[15], a[16], a[17], a[12], a[13], a[14]]) 
+                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[7]), txn_type, price(a[9], nav_price), a[9], a[10], a[11], a[15], a[16], a[17], a[12], a[13], a[14], price(a[9], a[10])]) 
                 
                 if txn[0] == "Total" :
                     txn_closed = True
@@ -507,12 +524,12 @@ class KarvyGainStatement:
                     a = cas_list[index].split("\t")
         #             print(a)
                     if a[0] == "Purchase":
-                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1], "%d-%m-%Y"), "Buy", None, a[2], a[3],None,None,None,None,None,None,None])
+                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1], "%d-%m-%Y"), "Buy", None, a[2], a[3],None,None,None,None,None,None,None, price(a[2], a[3]) ])
         #  Date Units Amount Price
         # namedtuple('Transaction', ['date', 'txn_type', 'price', 'units', 'nav']) 
                                 
                     if a[4] == "Redemption":
-                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[5], "%d-%m-%Y"), "Sell", a[6], a[10], a[7], a[11], a[12], a[13], a[14], a[15], a[16], a[17]]) 
+                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[5], "%d-%m-%Y"), "Sell", a[6], a[10], a[7], a[11], a[12], a[13], a[14], a[15], a[16], a[17], price(a[2], a[3]) ]) 
                 
                 if txn[0] == "Total :" :
                     txn_closed = True
@@ -548,7 +565,7 @@ class CsvGainStatement:
         scheme_name = row[0]
         scheme_norm = normalize_scheme_name(scheme_name)
         
-        sell_txn = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[6]), "Sell", row[8], row[4], row[7]]
+        sell_txn = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[6]), "Sell", row[8], row[4], row[7],None,None,None,None,None,None,None, row[5], age_in_days(row[2], row[6], "%Y-%m-%dT%H:%M:%S")]
         buy_txn  = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[2]), "Buy", row[5], row[4], row[3]]
         
         return buy_txn, sell_txn
@@ -634,6 +651,21 @@ if __name__ == "__main__":
         next(reader, None)  # skip the headers
         for row in reader:   
             processing_queue.append(tuple(None if v.strip() == "" else v.strip() for v in row)) 
+
+    summary_file_path = "output/reconciliation_summary.csv"
+    summary_file_excl_csv_path = "output/reconciliation_summary_excl_csv_gains.csv"
+    detailed_summ_file_path = "output/reconciliation_detailed.csv"
+    gain_file_path = "output/gain_stmt_consolidated.csv"
+    txns_file_path = "output/gain_txns_consolidated.csv"
+
+    if os.path.exists(gain_file_path):
+        os.remove(gain_file_path)
+
+    if os.path.exists(txns_file_path):
+        os.remove(txns_file_path)
+    
+    write_txns_to_csv(gain_file_path, [TXN_LIST_HEADERS])
+    write_txns_to_csv(txns_file_path, [TXN_LIST_HEADERS])
     
     gain_dict = None
     csv_gain_dict = None
@@ -647,9 +679,6 @@ if __name__ == "__main__":
         input_path = "input/{}".format(filename)
         output_path = "output/{}".format(os.path.splitext(filename)[0])
         outfile = "{}-{}.{}".format(output_path, stmt_type, output_format)
-        summary_file_path = "output/reconciliation_summary.csv"
-        summary_file_excl_csv_path = "output/reconciliation_summary_excl_csv_gains.csv"
-        detailed_summ_file_path = "output/reconciliation_detailed.csv"
 
         columns = []
         
@@ -676,11 +705,15 @@ if __name__ == "__main__":
         elif stmt_type == 'GAIN':
             if stmt_src == 'CAMS':
                 txn_list = CamsGainStatement().process_stmt(content)
+                write_txns_to_csv(gain_file_path, txn_list, 'a', ["Buy", "Switch In"])
             elif stmt_src == 'KARVY':
                 txn_list = KarvyGainStatement().process_stmt(content)
+                write_txns_to_csv(gain_file_path, txn_list, 'a', ["Sell"])
             elif stmt_src == 'CSV':
-                txn_list = CsvGainStatement().process_stmt(input_path)   
+                txn_list = CsvGainStatement().process_stmt(input_path) 
+                # write_txns_to_csv(gain_file_path, txn_list, 'a', ["Sell"])  
             
+            write_txns_to_csv(txns_file_path, txn_list, 'a')
             logging.debug("creating TxnDict for : {}".format(filename))
             txn_dict = TxnDict(txn_list, "sell", ignore_folio = args.ignore_folio, ignore_nav = args.ignore_nav, debug = args.debug)
             headers = TXN_LIST_HEADERS

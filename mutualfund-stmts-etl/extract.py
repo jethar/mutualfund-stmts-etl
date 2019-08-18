@@ -153,19 +153,23 @@ class TxnDict:
 
     def __add__(self, other, operator=None):
         new_dict = self.txn_dict.copy()
-        for key, units in other.txn_dict.items():
-            if key in new_dict:
-                if operator is None:
-                    self.log.debug("Inside operator None check")
-                    new_dict[key] += units
-            else:
-                norm_key = self.get_tuple_with_norm_value(key)
-                if norm_key in new_dict:
+
+        if other is not None:
+            for key, units in other.txn_dict.items():
+                if key in new_dict:
                     if operator is None:
-                        new_dict[norm_key] += units
+                        self.log.debug("Inside operator None check")
+                        new_dict[key] += units
                 else:
-                    new_dict[key] = units     
+                    norm_key = self.get_tuple_with_norm_value(key)
+                    if norm_key in new_dict:
+                        if operator is None:
+                            new_dict[norm_key] += units
+                    else:
+                        new_dict[key] = units     
         
+        self.normalize_keys_in_dict(new_dict)
+
         c = TxnDict()
         c.txn_dict = new_dict
         return c 
@@ -187,6 +191,8 @@ class TxnDict:
                 else:
                     new_dict[key] = units     
         
+        self.normalize_keys_in_dict(new_dict)
+
         c = TxnDict()
         c.txn_dict = new_dict
         return c 
@@ -194,25 +200,23 @@ class TxnDict:
     def __sub__(self, other):
         self.log.debug("Inside TxnDict.__sub__")
         new_dict = self.txn_dict.copy()
-        for key, units in other.txn_dict.items():
-            # self.log.debug("Looking for - {}".format(key))
-            if key in new_dict:
-                # self.log.debug("Original Units: {}".format(new_dict[key]))
-                new_dict[key] -= units
-                # self.log.debug("Updated Units: {}".format(new_dict[key]))
-            else:
-                self.log.debug("Key did not match - {}".format(key))
-                norm_key = self.get_tuple_with_norm_value(key)
-                if norm_key in new_dict:
-                    new_dict[norm_key] -= units
-                else:
-                    new_dict[key] = units * -1 
 
-        for key, units in new_dict.items():
-            norm_key = self.get_tuple_with_norm_value(key)
-            if norm_key != key and norm_key in new_dict:
-                new_dict[norm_key] += units
-                new_dict[key] = 0
+        if other is not None:
+            for key, units in other.txn_dict.items():
+                # self.log.debug("Looking for - {}".format(key))
+                if key in new_dict:
+                    # self.log.debug("Original Units: {}".format(new_dict[key]))
+                    new_dict[key] -= units
+                    # self.log.debug("Updated Units: {}".format(new_dict[key]))
+                else:
+                    self.log.debug("Key did not match - {}".format(key))
+                    norm_key = self.get_tuple_with_norm_value(key)
+                    if norm_key in new_dict:
+                        new_dict[norm_key] -= units
+                    else:
+                        new_dict[key] = units * -1 
+
+        self.normalize_keys_in_dict(new_dict)
          
         c = TxnDict()
         c.txn_dict = new_dict
@@ -224,6 +228,13 @@ class TxnDict:
     def get_tuple_with_norm_value(self, tup):
         new_folio = folio_norm_value(tup[0]) if tup[0] is not None else None
         return (new_folio,) + tup[1:]
+
+    def normalize_keys_in_dict(self, a_dict):
+        for key, units in a_dict.items():
+            norm_key = self.get_tuple_with_norm_value(key)
+            if norm_key != key and norm_key in a_dict:
+                a_dict[norm_key] += units
+                a_dict[key] = 0
 
     @classmethod
     def copy(cls, txn_dict):
@@ -254,7 +265,8 @@ def normalize_scheme_name(scheme_name):
 
     sch_suffix = "direct" if "direct" in name[idx:] else ""
     # sch_type = re.sub(r'[ -_]+', '', name[idx+4:].replace("direct", "").replace("plan", ""))
-    sch_suffix += "growth" if "growth" in name[idx:] else ""
+    # sch_suffix += "growth" if "growth" in name[idx:] else ""
+    sch_suffix += "div" if "div" in name[idx:] else ""
 
     scheme_norm = "{}_{}".format(sch_name, sch_suffix)
     return scheme_norm    

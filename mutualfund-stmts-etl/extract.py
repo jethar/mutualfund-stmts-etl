@@ -507,7 +507,7 @@ class KarvyGainStatement:
                     a = cas_list[index].split("\t")
         #             print(a)
                     if a[0] == "Purchase":
-                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1], "%d-%m-%Y"), "Buy", None, a[3], a[2],None,None,None,None,None,None,None])
+                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1], "%d-%m-%Y"), "Buy", None, a[2], a[3],None,None,None,None,None,None,None])
         #  Date Units Amount Price
         # namedtuple('Transaction', ['date', 'txn_type', 'price', 'units', 'nav']) 
                                 

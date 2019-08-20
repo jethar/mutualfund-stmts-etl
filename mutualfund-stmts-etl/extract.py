@@ -29,7 +29,7 @@ KARVY_GAIN_COLUMNS = [67, 106, 148, 185, 234, 273, 340, 394, 431, 469, 520, 582,
 CAMS_CAS_COLUMNS = [26, 70, 310, 375, 435, 495, 570]
 
 CAS_LIST_HEADERS = ["scheme_code", "scheme_name", "folio", "owner", "scheme_norm", "date", "txn_type", "price", "units", "nav"]
-TXN_LIST_HEADERS = ["scheme_code", "scheme_name", "folio", "owner", "scheme_norm", "date", "txn_type", "price", "units", "nav", "indexed_cost", "stcg", "ltcg_idx", "ltcg_wo_idx", "units_grandf", "nav_grandf", "value_grandf", "buy_value", "age_in_yrs"]
+TXN_LIST_HEADERS = ["scheme_code", "scheme_name", "folio", "owner", "scheme_norm", "date", "txn_type", "price", "units", "nav", "indexed_cost", "stcg", "ltcg_idx", "ltcg_wo_idx", "units_grandf", "nav_grandf", "value_grandf", "buy_value", "age_in_yrs", "purchase_date", "sale_date"]
 
 def pdf_to_text(pdf_path, outfile, columns, output_format='tsv', password = None):
     
@@ -464,7 +464,7 @@ class CamsGainStatement:
                     a = cas_list[index].split("\t")
                     logging.debug(a)
                     if a[0] == "Redemption":
-                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1]), "Sell", a[3], a[2], a[4],None,None,None,None,None,None,None, None])
+                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[1]), "Sell", get_float(a[3]), a[2], a[4],None,None,None,None,None,None,None, None, None, None])
                         sell_nav = a[4]
                         sell_date = a[1]
         #  Date Units Amount Price
@@ -472,7 +472,7 @@ class CamsGainStatement:
                                 
                     if a[6] in ["Purchase", "Switch In (Merger)"]:
                         txn_type = "Buy" if a[6] == "Purchase" else "Switch In"
-                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[7]), txn_type, price(a[9], sell_nav), a[9], a[10], a[11], a[15], a[16], a[17], a[12], a[13], a[14], price(a[9], a[10]), age_in_yrs(a[7], sell_date)]) 
+                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[7]), txn_type, price(a[9], sell_nav), a[9], a[10], a[11], a[15], a[16], a[17], a[12], a[13], a[14], price(a[9], a[10]), age_in_yrs(a[7], sell_date), convert_date(a[7]), convert_date(sell_date) ]) 
                 
                 if txn[0] == "Total" :
                     txn_closed = True
@@ -532,7 +532,7 @@ class KarvyGainStatement:
         # namedtuple('Transaction', ['date', 'txn_type', 'price', 'units', 'nav']) 
                                 
                     if a[4] == "Redemption":
-                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[5], "%d-%m-%Y"), "Sell", a[6], a[10], a[7], a[11], a[12], a[13], a[14], a[15], a[16], a[17], price(a[2], a[3]), age_in_yrs(a[1], a[5], "%d-%m-%Y") ]) 
+                        gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[5], "%d-%m-%Y"), "Sell", get_float(a[6]), a[10], a[7], a[11], a[12], a[13], a[14], a[15], a[16], a[17], price(a[2], a[3]), age_in_yrs(a[1], a[5], "%d-%m-%Y"), convert_date(a[1], "%d-%m-%Y"), convert_date(a[5], "%d-%m-%Y") ]) 
                 
                 if txn[0] == "Total :" :
                     txn_closed = True
@@ -568,7 +568,7 @@ class CsvGainStatement:
         scheme_name = row[0]
         scheme_norm = normalize_scheme_name(scheme_name)
         
-        sell_txn = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[6]), "Sell", row[8], row[4], row[7],None,None,None,None,None,None,None, row[5], age_in_yrs(row[2], row[6], "%Y-%m-%dT%H:%M:%S")]
+        sell_txn = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[6]), "Sell", row[8], row[4], row[7],None,None,None,None,None,None,None, row[5], age_in_yrs(row[2], row[6], "%Y-%m-%dT%H:%M:%S"), convert_date(row[2]), convert_date(row[6]) ]
         buy_txn  = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[2]), "Buy", row[5], row[4], row[3]]
         
         return buy_txn, sell_txn

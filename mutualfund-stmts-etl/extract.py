@@ -472,8 +472,8 @@ class CamsGainStatement:
         #  Date Units Amount Price
         # namedtuple('Transaction', ['date', 'txn_type', 'price', 'units', 'nav']) 
                                 
-                    if a[6] in ["Purchase", "Switch In (Merger)"]:
-                        txn_type = "Buy" if a[6] == "Purchase" else "Switch In"
+                    if a[6] in ["Purchase", "Switch In (Merger)"] or a[6].startswith("Purchase"):
+                        txn_type = "Buy" if a[6].startswith("Purchase") else "Switch In"
                         gain_txn_list.append([None, scheme_name, folio, None, scheme_norm, convert_date(a[7]), txn_type, price(a[9], sell_nav), a[9], a[10], a[11], a[15], a[16], a[17], a[12], a[13], a[14], price(a[9], a[10]), age_in_yrs(a[7], sell_date), convert_date(a[7]), convert_date(sell_date) ]) 
                 
                 if txn[0] == "Total" :

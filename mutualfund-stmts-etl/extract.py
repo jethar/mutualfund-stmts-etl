@@ -101,6 +101,8 @@ class TxnDict:
             d = txn[2:7]
             if kwargs["ignore_folio"]:
                 d[0] = None
+            else:
+                d[0] = d[0].replace(" ", "")
 
             if kwargs["ignore_nav"]:
                 d.append(None)
@@ -568,7 +570,7 @@ class CsvGainStatement:
         scheme_name = row[0]
         scheme_norm = normalize_scheme_name(scheme_name)
         
-        sell_txn = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[6]), "Sell", row[8], row[4], row[7],None,None,None,None,None,None,None, row[5], age_in_yrs(row[2], row[6], "%Y-%m-%dT%H:%M:%S"), convert_date(row[2]), convert_date(row[6]) ]
+        sell_txn = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[6]), "Sell", row[8], row[4], row[7],None, row[9],None,None,None,None,None, row[5], age_in_yrs(row[2], row[6], "%Y-%m-%dT%H:%M:%S"), convert_date(row[2]), convert_date(row[6]) ]
         buy_txn  = [None, scheme_name, row[1], None, scheme_norm, convert_date(row[2]), "Buy", row[5], row[4], row[3]]
         
         return buy_txn, sell_txn
@@ -652,8 +654,9 @@ if __name__ == "__main__":
     with open(args.job_file_path,'rt') as csv_file:
         reader = csv.reader(csv_file)
         next(reader, None)  # skip the headers
-        for row in reader:   
-            processing_queue.append(tuple(None if v.strip() == "" else v.strip() for v in row)) 
+        for row in reader:
+            if len(row) > 0:   
+                processing_queue.append(tuple(None if v.strip() == "" else v.strip() for v in row)) 
 
     summary_file_path = "output/reconciliation_summary.csv"
     summary_file_excl_csv_path = "output/reconciliation_summary_excl_csv_gains.csv"
@@ -738,7 +741,7 @@ if __name__ == "__main__":
     recon_dict = cas_dict - gain_dict              
     write_summary(summary_file_excl_csv_path, recon_dict, only_non_zero_values = True)
 
-    recon_dict = cas_dict - (gain_dict | csv_gain_dict)
+    recon_dict = cas_dict - (gain_dict | csv_gain_dict) if (gain_dict or csv_gain_dict) else cas_dict
     write_summary(summary_file_path, recon_dict, only_non_zero_values = True)
     write_summary(detailed_summ_file_path, recon_dict)
 

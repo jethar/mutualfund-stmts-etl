@@ -1,0 +1,92 @@
+    <ScheduleCGFor23>
+      <ShortTermCapGainFor23>
+        <EquityMFonSTT>
+          <MFSectionCode/>
+          <EquityMFonSTTDtls>
+            <FullConsideration>%(stcg_eq_sell)s</FullConsideration>
+            <DeductSec48>
+              <AquisitCost>%(stcg_eq_buy)s</AquisitCost>
+              <ImproveCost>0</ImproveCost>
+              <ExpOnTrans>0</ExpOnTrans>
+            </DeductSec48>
+          </EquityMFonSTTDtls>
+        </EquityMFonSTT>
+        <SaleOnOtherAssets>
+          <FullValueConsdRecvUnqshr>0</FullValueConsdRecvUnqshr>
+          <FairMrktValueUnqshr>0</FairMrktValueUnqshr>
+          <FullValueConsdSec50CA>0</FullValueConsdSec50CA>
+          <FullValueConsdOthUnqshr>%(stcg_noneq_sell)s</FullValueConsdOthUnqshr>
+          <DeductSec48>
+            <AquisitCost>%(stcg_noneq_buy)s</AquisitCost>
+            <ImproveCost>0</ImproveCost>
+            <ExpOnTrans>0</ExpOnTrans>
+          </DeductSec48>
+        </SaleOnOtherAssets>
+      </ShortTermCapGainFor23>
+      <LongTermCapGain23>
+        <SaleOfEquityShareUs112A>
+          <FullConsideration>%(ltcg_eq_sell)s</FullConsideration>
+          <DeductSec48Sec112A>
+            <CostOfAquisitionWoInd>%(ltcg_eq_rlup2)s</CostOfAquisitionWoInd>
+            <AquisitCost>%(ltcg_eq_buy)s</AquisitCost>
+            <LTCAAcquiredBf>%(ltcg_eq_rlup1)s</LTCAAcquiredBf>
+            <FairMarketValue>%(ltcg_eq_fmv)s</FairMarketValue>
+            <FullValueConsdrtn>%(ltcg_eq_sell)s</FullValueConsdrtn>
+            <ImproveCost>0</ImproveCost>
+            <ExpOnTrans>0</ExpOnTrans>
+          </DeductSec48Sec112A>
+          <BalanceCG>0</BalanceCG>
+          <ExemptionOrDednUs54>
+            <ExemptionOrDednUs54Dtls>
+              <ExemptionSecCode/>
+              <ExemptionAmount/>
+            </ExemptionOrDednUs54Dtls>
+            <ExemptionGrandTotal>0</ExemptionGrandTotal>
+          </ExemptionOrDednUs54>
+          <CapgainonAssets>0</CapgainonAssets>
+        </SaleOfEquityShareUs112A>
+        <SaleofAssetNA>
+          <FullValueConsdRecvUnqshr>0</FullValueConsdRecvUnqshr>
+          <FairMrktValueUnqshr>0</FairMrktValueUnqshr>
+          <FullValueConsdSec50CA>0</FullValueConsdSec50CA>
+          <FullValueConsdOthUnqshr>%(ltcg_noneq_sell)s</FullValueConsdOthUnqshr>
+          <DeductSec48>
+            <AquisitCost>%(ltcg_noneq_buy)s</AquisitCost>
+            <ImproveCost>0</ImproveCost>
+            <ExpOnTrans>0</ExpOnTrans>
+          </DeductSec48>
+          <ExemptionOrDednUs54>
+            <ExemptionGrandTotal>0</ExemptionGrandTotal>
+          </ExemptionOrDednUs54>
+        </SaleofAssetNA>
+      </LongTermCapGain23>
+    </ScheduleCGFor23>
+
+
+
+>>> print '%(language)s has %(number)03d quote types.' % \
+...       {"language": "Python", "number": 2}
+
+stcg_eq_buy
+stcg_eq_sell
+
+stcg_noneq_buy
+stcg_noneq_sell
+
+ltcg_noneq_buy
+ltcg_noneq_sell
+
+
+ltcg_eq_buy
+ltcg_eq_sell
+ltcg_eq_fmv
+ltcg_eq_rlup1
+ltcg_eq_rlup2
+
+
+import csv
+from pprint import pprint
+
+with open(filename) as fd:
+    for row in csv.DictReader(fd):
+        pprint(row)

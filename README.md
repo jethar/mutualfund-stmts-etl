@@ -90,6 +90,8 @@ The `output` folder will contain the generated CSV files for each input pdf. Als
 * reconciliation_detailed.csv - includes even matched folios, to infer if there is anything amiss.
 * reconciliation_summary_excl_csv_gains.csv - Containing transactions reconciliation between CAS and gain pdf statements excluding csv gain statement. 
 
+Now the project also generates a consolidated gains transaction csv `gain_stmt_consolidated.csv`, which can be used for generating final capital gains values.  
+
 ## TODOs
 
 1. Handling statments from other than CAMS or Karvy. e.g. FTAMIL / SBFS
